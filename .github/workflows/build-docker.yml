@@ -1,49 +1,49 @@
-name: Docker Multi-Architecture Build
+name: Build Docker image
 
 on:
-    push:
-        paths-ignore:
-            - "**.md"
-        branches:
-            - master
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-    build-docker:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
-            - name: Set up Docker Buildx
-              id: buildx
-              uses: docker/setup-buildx-action@v3
-              with:
-                  version: latest
-            - name: Login to Quay.io
-              uses: docker/login-action@v3
-              with:
-                  registry: quay.io
-                  username: ${{ secrets.QUAY_USERNAME }}
-                  password: ${{ secrets.QUAY_PASSWORD }}
-            - name: Build and push
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ./Dockerfile
-                  platforms: linux/amd64,linux/arm64/v8
-                  push: true
-                  tags: quay.io/invidious/youtube-trusted-session-generator:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-            - name: Build and push with HTTP API
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ./Dockerfile.webserver
-                  platforms: linux/amd64,linux/arm64/v8
-                  push: true
-                  tags: quay.io/invidious/youtube-trusted-session-generator:webserver
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          tags: |
+            type=raw,value=latest
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Dockerfile.webserver
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
