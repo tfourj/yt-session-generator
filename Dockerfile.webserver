@@ -1,4 +1,4 @@
-FROM quay.io/invidious/youtube-trusted-session-generator:latest
+FROM ghcr.io/imputnet/yt-session-generator:latest
 
 COPY docker/scripts/startup-webserver.sh ./
 
