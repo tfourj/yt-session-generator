@@ -2,6 +2,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -115,6 +116,13 @@ class PotokenExtractor:
                 await self._wait_for_handler()
             await tab.close()
             browser.stop()
+            
+            # Clean up temporary directory
+            try:
+                shutil.rmtree(self.profile_path, ignore_errors=True)
+                logger.info(f'cleaned up temporary directory: {self.profile_path}')
+            except Exception as e:
+                logger.info(f'failed to clean up temporary directory {self.profile_path}: {e}')
 
     @staticmethod
     async def _click_on_player(tab: nodriver.Tab) -> bool:
